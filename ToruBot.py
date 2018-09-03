@@ -32,6 +32,17 @@ async def blacklist(word):
     else:
         await client.say('The word %s has already been blacklisted' % word)
 
+@client.command()
+async def whitelist(word):
+    word = word.lower()
+    if word in blacklistw:
+        blacklistw.remove(word)
+        writeFile('blacklist.txt', blacklistw)
+        await client.say('The word %s has been removed from the blacklist' % word)
+    else:
+        await client.say('The word %s has not been blacklisted' % word)
+
+
 @client.event
 async def on_message(message):
     if client.user.id != message.author.id:
