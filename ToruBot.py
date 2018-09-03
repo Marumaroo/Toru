@@ -2,12 +2,14 @@ import discord
 import asyncio
 import config
 import requests
+import youtube_dl
 from functions import readFile, writeFile
 from discord.ext import commands
 
 BOT_PREFIX = ('$','!')
 blacklistw = readFile('blacklist.txt')
 client = commands.Bot(command_prefix = BOT_PREFIX)
+players = {}
 
 @client.event
 async def on_ready():
@@ -42,12 +44,53 @@ async def whitelist(word):
     else:
         await client.say('The word %s has not been blacklisted' % word)
 
+@client.command(pass_context=True)
+async def clear(ctx, amount=100):
+    channel = ctx.message.channel
+    messages = []
+    async for message in client.logs_from(channel, limit=int(amount)+1):
+        messages.append(message)
+    await client.delete_messages(messages)
+    await client.say('%s messages have been deleted' % amount)
+
+@client.command(pass_context=True)
+async def join(ctx):
+    channel = ctx.message.author.voice.voice_channel
+    await client.join_voice_channel(channel)
+
+@client.command(pass_context=True)
+async def leave(ctx):
+    server = ctx.message.server
+    voice_client = client.voice_client_in(server)
+    await voice_client.disconnect()
+
+@client.command(pass_context=True)
+async def play(ctx, url):
+    server = ctx.message.server
+    voice_client = client.voice_client_in(server)
+    player = await voice_client.create_ytdl_player(url)
+    players[server.id] = player
+    player.start()
+
+@client.command(pass_context=True)
+async def pause(ctx):
+    id = ctx.message.server.id
+    players[id].pause()
+
+@client.command(pass_context=True)
+async def stop(ctx):
+    id = ctx.message.server.id
+    players[id].stop()
+
+@client.command(pass_context=True)
+async def resume(ctx):
+    id = ctx.message.server.id
+    players[id].resume()
 
 @client.event
 async def on_message(message):
     if client.user.id != message.author.id:
         msg = message.content.lower().split(' ')
-        print(msg)
         if bool(set(blacklistw).intersection(msg)) and not message.content.startswith(BOT_PREFIX):
             await client.delete_message(message)
             await client.send_message(message.channel, 'Your message has been deleted as it contains a blacklisted word')
