@@ -9,13 +9,13 @@ from discord.ext import commands
 BOT_PREFIX = ('$','!')
 blacklistw = readFile('blacklist.txt')
 client = commands.Bot(command_prefix = BOT_PREFIX)
-players = {}
+players = []
 queue = []
 
 def check_queue(id):
     queue.pop(0)
     if queue:
-        players[id] = queue[0]
+        players[0] = queue[0]
         queue[0].start()
 
 @client.event
@@ -76,13 +76,13 @@ async def play(ctx, url):
     server = ctx.message.server
     voice_client = client.voice_client_in(server)
     player = await voice_client.create_ytdl_player(url, after=lambda: check_queue(server.id))
-    if queue:
+    if queue and players:
         queue.append(player)
-        await client.say("Song queued")
+        await client.say("Song queued: [%s of %s]" % (queue.index(player)+1,len(queue)))
     else:
-        queue.append(player)
-        players[server.id] = player
+        players.append(player)
         player.start()
+        await client.say('Now playing: %s' % player.title)
 
 @client.command(pass_context=True)
 async def skip(ctx):
@@ -91,18 +91,15 @@ async def skip(ctx):
 
 @client.command(pass_context=True)
 async def pause(ctx):
-    id = ctx.message.server.id
-    players[id].pause()
+    players[0].pause()
 
 @client.command(pass_context=True)
 async def stop(ctx):
-    id = ctx.message.server.id
-    players[id].stop()
+    players[0].stop()
 
 @client.command(pass_context=True)
 async def resume(ctx):
-    id = ctx.message.server.id
-    players[id].resume()
+    players[0].resume()
 
 @client.command()
 async def error():
