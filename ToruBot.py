@@ -10,6 +10,13 @@ BOT_PREFIX = ('$','!')
 blacklistw = readFile('blacklist.txt')
 client = commands.Bot(command_prefix = BOT_PREFIX)
 players = {}
+queue = []
+
+def check_queue(id):
+    queue.pop(0)
+    if queue:
+        players[id] = queue[0]
+        queue[0].start()
 
 @client.event
 async def on_ready():
@@ -68,9 +75,19 @@ async def leave(ctx):
 async def play(ctx, url):
     server = ctx.message.server
     voice_client = client.voice_client_in(server)
-    player = await voice_client.create_ytdl_player(url)
-    players[server.id] = player
-    player.start()
+    player = await voice_client.create_ytdl_player(url, after=lambda: check_queue(server.id))
+    if queue:
+        queue.append(player)
+        await client.say("Song queued")
+    else:
+        queue.append(player)
+        players[server.id] = player
+        player.start()
+
+@client.command(pass_context=True)
+async def skip(ctx):
+    id = ctx.message.server.id
+    check_queue(id)
 
 @client.command(pass_context=True)
 async def pause(ctx):
@@ -86,6 +103,10 @@ async def stop(ctx):
 async def resume(ctx):
     id = ctx.message.server.id
     players[id].resume()
+
+@client.command()
+async def error():
+    await client.say('OOPSIE WOOPSIE!! Uwu We make a fucky wucky!! A wittle fucko boingo! The code monkeys at our headquarters are working VEWY HAWD to fix this!')
 
 @client.event
 async def on_message(message):
