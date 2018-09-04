@@ -9,14 +9,15 @@ from discord.ext import commands
 BOT_PREFIX = ('$','!')
 blacklistw = readFile('blacklist.txt')
 client = commands.Bot(command_prefix = BOT_PREFIX)
-players = []
+players = {}
 queue = []
 
 def check_queue(id):
     queue.pop(0)
     if queue:
-        players[0] = queue[0]
+        players[id] = queue[0]
         queue[0].start()
+        client.say('Now playing: %s' % queue[0].title)
 
 @client.event
 async def on_ready():
@@ -76,30 +77,52 @@ async def play(ctx, url):
     server = ctx.message.server
     voice_client = client.voice_client_in(server)
     player = await voice_client.create_ytdl_player(url, after=lambda: check_queue(server.id))
-    if queue and players:
+    if queue:
         queue.append(player)
-        await client.say("Song queued: [%s of %s]" % (queue.index(player)+1,len(queue)))
+        await client.say("%s queued: [%s of %s]" % (player.title, queue.index(player),len(queue)-1))
     else:
-        players.append(player)
+        queue.append(player)
+        players[server.id] = player
         player.start()
         await client.say('Now playing: %s' % player.title)
 
+@client.command(pass_context=True) 
+async def playlist(ctx, url): #broken
+    server = ctx.message.server
+    voice_client = client.voice_client_in(server)
+    ydl = youtube_dl.YoutubeDL()
+    
+    with ydl:
+        r = ydl.extract_info(url, download=False)
+        for video in r['entries']:
+            player = await voice_client.create_ytdl_player('https://www.youtube.com/watch?v=%s' % video['id'], after=lambda: check_queue(server.id))
+            queue.append(player)
+            await client.say('%s queued: [%s of %s]' % (player.title, queue.index(player)+1, len(queue)))
+    
+    player = queue[0]
+    player.start()
+    await client.say('Now Playing: %s' % player.title)
+    
 @client.command(pass_context=True)
 async def skip(ctx):
     id = ctx.message.server.id
+    players[id].pause()
     check_queue(id)
 
 @client.command(pass_context=True)
 async def pause(ctx):
-    players[0].pause()
+    id = ctx.message.server.id
+    players[id].pause()
 
 @client.command(pass_context=True)
 async def stop(ctx):
-    players[0].stop()
+    id = ctx.message.server.id
+    players[id].stop()
 
 @client.command(pass_context=True)
 async def resume(ctx):
-    players[0].resume()
+    id = ctx.message.server.id
+    players[id].resume()
 
 @client.command()
 async def error():
