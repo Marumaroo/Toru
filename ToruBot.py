@@ -124,10 +124,6 @@ async def resume(ctx):
     id = ctx.message.server.id
     players[id].resume()
 
-@client.command()
-async def error():
-    await client.say('OOPSIE WOOPSIE!! Uwu We make a fucky wucky!! A wittle fucko boingo! The code monkeys at our headquarters are working VEWY HAWD to fix this!')
-
 @client.event
 async def on_message(message):
     if client.user.id != message.author.id:
